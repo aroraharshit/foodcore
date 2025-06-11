@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"context"
-	"net/http"
+	"errors"
 
+	"github.com/aroraharshit/foodcore/api-gateway/models"
 	proto "github.com/aroraharshit/foodcore/api-gateway/proto"
+	"github.com/aroraharshit/foodcore/api-gateway/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,15 +19,10 @@ func NewUserController(client proto.UserServiceClient) *UserController {
 }
 
 func (uc *UserController) RegisterUser(c *gin.Context) {
-	var req struct {
-		Name     string `json:"name"`
-		Mobile   string `json:"mobile"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var req models.RegisterUserRequest
 
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		utils.ResponseHandler(c, nil, err)
 		return
 	}
 
@@ -37,12 +34,41 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.ResponseHandler(c, nil, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	utils.ResponseHandler(c, gin.H{
 		"userId":  resp.UserId,
 		"message": resp.Message,
+	}, nil)
+}
+
+func (uc *UserController) LoginUser(c *gin.Context) {
+	var req models.LoginUserRequest
+
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		utils.ResponseHandler(c, nil, err)
+	}
+
+	resp, err := uc.GRPCClient.LoginUser(context.Background(), &proto.LoginRequest{
+		Email:    req.Email,
+		Mobile:   req.Mobile,
+		Password: req.Password,
 	})
+
+	if err != nil {
+		utils.ResponseHandler(c, nil, err)
+		return
+	}
+
+	if resp == nil {
+		utils.ResponseHandler(c, nil, errors.New("user doesn't exist"))
+		return
+	}
+
+	utils.ResponseHandler(c, gin.H{
+		"userId":  resp.UserId,
+		"message": resp.Message,
+	}, nil)
 }

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/aroraharshit/go-foodcore/user-service/models"
@@ -11,6 +13,7 @@ import (
 
 type UserService interface {
 	RegisterUser(ctx context.Context, req *models.RegisterUserRequest) (*models.RegisterUserResponse, error)
+	LoginUser(ctx context.Context, req *models.LoginUserRequest) (*models.LoginUserResponse, error)
 }
 
 type userService struct {
@@ -53,4 +56,45 @@ func (us *userService) RegisterUser(ctx context.Context, req *models.RegisterUse
 	}
 
 	return &models.RegisterUserResponse{UserId: userId, Message: "User register successfully"}, nil
+}
+
+func (us *userService) LoginUser(ctx context.Context, req *models.LoginUserRequest) (*models.LoginUserResponse, error) {
+	// emailExists, err := us.repo.FindByEmail(ctx, req.Email)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// if !emailExists {
+	// 	return nil, errors.New("User with this email doesnt exists")
+	// }
+
+	mobileExists, userId, err := us.repo.FindByMobile(ctx, req.Mobile)
+	if err != nil {
+		return nil, err
+	}
+
+	if !mobileExists {
+		return nil, errors.New("user with this mobile number doesnt exists")
+	}
+
+	storedHash, err := us.repo.FetchHashPassword(ctx, userId)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	isPasswordMatched, err := utils.VerifyPassword(req.Password, storedHash)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	if !isPasswordMatched {
+		return nil, errors.New("password doesnt matched")
+	}
+
+	return &models.LoginUserResponse{
+		UserId:  userId,
+		Message: "Successfully Login",
+	}, nil
 }

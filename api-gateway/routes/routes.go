@@ -7,4 +7,5 @@ import (
 
 func UserRoutes(r *gin.Engine, userController *controllers.UserController) {
 	r.POST("/register", userController.RegisterUser)
+	r.POST("/login",userController.LoginUser)
 }
